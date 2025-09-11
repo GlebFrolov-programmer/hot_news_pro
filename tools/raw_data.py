@@ -9,7 +9,7 @@ from config.settings import settings
 from parsers.google_parser import GoogleParser
 from parsers.tavily_parser import TavilyParser
 from parsers.telegram_parser import TelegramParser
-from parsers.website_parser import WebsiteParser
+from parsers.website_parser_old import WebsiteParser
 from tools.normalize_data import identification_region
 
 

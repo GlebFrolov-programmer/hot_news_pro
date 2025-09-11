@@ -11,7 +11,9 @@ from tqdm.asyncio import tqdm_asyncio
 from parsers.google_parser import GoogleParser
 from parsers.tavily_parser import TavilyParser
 from parsers.telegram_parser import TelegramParser
+# from parsers.website_parser import fill_raw_data_by_parse_websites_async
 from parsers.website_parser import WebsiteParser
+# from parsers.website_parser_old import WebsiteParser
 
 
 @dataclass
@@ -107,7 +109,8 @@ class ContainerNewsItem:
         return distinct_data
 
     async def fill_raw_data_by_parse_websites_async(self, data: List[Dict[str, Any]], max_concurrent: int = 5,
-                                                    process_timeout: int = 15000) -> List[Dict[str, Any]]:
+                                                    process_timeout: int = 15000, show_browser: bool = False) -> List[
+        Dict[str, Any]]:
         print(f"Общее количество записей: {len(data)}")
 
         # Разделяем на две части
@@ -118,30 +121,87 @@ class ContainerNewsItem:
             print("Все записи уже заполнены, парсинг не требуется.")
             return data
 
-        async with WebsiteParser() as parser:
-            semaphore = asyncio.Semaphore(max_concurrent)
+        semaphore = asyncio.Semaphore(max_concurrent)
 
-            async def parse_item(item: Dict[str, Any]):
-                async with semaphore:
-                    try:
-                        result = await asyncio.wait_for(parser.parse(item['url']), timeout=process_timeout / 1000)
+        async def parse_item(item: Dict[str, Any]):
+            async with semaphore:
+                try:
+                    async with WebsiteParser(page_load_timeout=process_timeout,
+                                                  show_browser=show_browser) as parser:
+                        result = await parser.parse(item['url'])
                         item['raw_data'] = result if result else ''
-                    except Exception as e:
-                        print(f"Ошибка парсинга {item['url']}: {e}")
-                        item['raw_data'] = ''
+                except Exception as e:
+                    print(f"Ошибка парсинга {item['url']}: {e}")
+                    item['raw_data'] = ''
 
-            tasks = [parse_item(item) for item in to_parse]
-            await tqdm_asyncio.gather(*tasks, desc="Парсинг сайтов")
+        tasks = [parse_item(item) for item in to_parse]
+        await tqdm_asyncio.gather(*tasks, desc="Парсинг сайтов")
 
         # Объединяем обратно списки
         combined = already_filled + to_parse
         return combined
 
-    def fill_raw_data_by_parse_websites(self, full_data: List[Dict[str, Any]], max_threads: int) -> List[Dict[str, Any]]:
-        return asyncio.run(self.fill_raw_data_by_parse_websites_async(data=full_data,
-                                                                      max_concurrent=max_threads))
+    def fill_raw_data_by_parse_websites(self, full_data: List[Dict[str, Any]],
+                                        max_threads: int,
+                                        page_load_timeout: int = 15000,
+                                        show_browser: bool = True) -> List[Dict[str, Any]]:
+        # Используем нашу асинхронную реализацию
+        return asyncio.run(self.fill_raw_data_by_parse_websites_async(
+            data=full_data,
+            max_concurrent=max_threads,
+            process_timeout=page_load_timeout,
+            show_browser=show_browser
+        ))
+    # async def fill_raw_data_by_parse_websites_async(self, data: List[Dict[str, Any]], max_concurrent: int = 5,
+    #                                                 process_timeout: int = 15000, show_browser: bool = False) -> List[Dict[str, Any]]:
+    #     print(f"Общее количество записей: {len(data)}")
+    #
+    #     # Разделяем на две части
+    #     to_parse = [item for item in data if not item.get('raw_data')]
+    #     already_filled = [item for item in data if item.get('raw_data')]
+    #
+    #     if not to_parse:
+    #         print("Все записи уже заполнены, парсинг не требуется.")
+    #         return data
+    #
+    #     async with WebsiteParser() as parser:
+    #         semaphore = asyncio.Semaphore(max_concurrent)
+    #
+    #         async def parse_item(item: Dict[str, Any]):
+    #             async with semaphore:
+    #                 try:
+    #                     result = await asyncio.wait_for(parser.parse(item['url']), timeout=process_timeout / 1000)
+    #                     item['raw_data'] = result if result else ''
+    #                 except Exception as e:
+    #                     print(f"Ошибка парсинга {item['url']}: {e}")
+    #                     item['raw_data'] = ''
+    #
+    #         tasks = [parse_item(item) for item in to_parse]
+    #         await tqdm_asyncio.gather(*tasks, desc="Парсинг сайтов")
+    #
+    #     # Объединяем обратно списки
+    #     combined = already_filled + to_parse
+    #     return combined
+    #
+    # def fill_raw_data_by_parse_websites(self, full_data: List[Dict[str, Any]],
+    #                                     max_threads: int,
+    #                                     page_load_timeout: int = 15000,
+    #                                     show_browser: bool = True) -> List[Dict[str, Any]]:
+    #     return asyncio.run(fill_raw_data_by_parse_websites_async(data=full_data,
+    #                                                              max_concurrent=max_threads,
+    #                                                              page_load_timeout=page_load_timeout,
+    #                                                              show_browser=show_browser
+    #                                                              ))
+        # return asyncio.run(self.fill_raw_data_by_parse_websites_async(data=full_data,
+        #                                                               max_concurrent=max_threads,
+        #                                                               process_timeout=page_load_timeout,
+        #                                                               show_browser=show_browser
+        #                                                                 ))
 
-    def parse_raw_data(self, max_threads: int):
+    def parse_raw_data(self,
+                       max_threads: int,
+                       page_load_timeout: int = 15000,
+                       show_browser: bool = True):
         print('\n**** PARSING RAW DATA FROM JSON FILES ****\n')
         folder = self.parameters.get('OUTPUT_DIR_RAW', '')
         if not folder or not os.path.isdir(folder):
@@ -196,7 +256,10 @@ class ContainerNewsItem:
         full_data = self.fix_metadata(full_data)
 
         # Заполнение данных из сайтов
-        full_data = self.fill_raw_data_by_parse_websites(full_data, max_threads)
+        full_data = self.fill_raw_data_by_parse_websites(full_data=full_data,
+                                                         max_threads=max_threads,
+                                                         page_load_timeout=page_load_timeout,
+                                                         show_browser=show_browser)
 
         # Сохранение в json
         self.to_json(full_data, 'RAW')

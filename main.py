@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser_settings = {
         # 'AVAILABLE_SOURCES': ['Google', 'Tavily', 'Telegram'],
         # 'AVAILABLE_SOURCES': ['Google'],
-        # 'AVAILABLE_REGIONS': ['Нижегородская область'],
+        'AVAILABLE_REGIONS': ['Россия'],
         'AVAILABLE_CATEGORIES': [
             'Тренды на рынке недвижимости', 'Доступность недвижимости', 'Цены на недвижимость',
             'Фонд оплаты труда'],
@@ -40,9 +40,12 @@ if __name__ == "__main__":
         stage = f'{tasks_to_parse.index(task) + 1} / {len(tasks_to_parse)}'
         task.print_statistics(stage)
 
-        # task.parse_processed_data()
+        task.parse_processed_data()
 
-        task.parse_raw_data(max_threads=5)
+        task.parse_raw_data(max_threads=5,
+                            page_load_timeout=15000,
+                            show_browser=True
+                            )
 
         task.parse_post_processing()
 
