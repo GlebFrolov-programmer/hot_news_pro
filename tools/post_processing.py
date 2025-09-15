@@ -64,3 +64,47 @@ def filter_raw_data_by_region(data: list[dict], **kwargs) -> list[dict]:
         print(f"Ошибка при фильтрации по ключевым словам региона: {e}")
         return data
 
+
+def clean_sensitive_content(data: list[dict], **kwargs) -> list[dict]:
+    """
+    Комплексная очистка всех строковых полей от запрещенного контента:
+    - Удаление URL-адресов (http, https, www)
+    - Удаление чувствительной информации (ИНН, БИК, ОГРН и т.д.)
+    - Модификация оставшихся URL-подобных строк
+    - Нормализация пробелов
+
+    Функция меняет данные на месте.
+    """
+    print('    ** Cleaning sensitive content from all fields **')
+
+    # Паттерны для поиска
+    url_pattern = r'https?://\S+|www\.\S+'
+    sensitive_words_pattern = r'\b(ИНН|БИК|ОГРН|Паспорт|СНИЛС|КПП|Карта|Телефон|Email)\b'
+    protocol_pattern = re.compile(r'^\w+://')
+    www_pattern = re.compile(r'^www\.')
+
+    for item in data:
+        for key, value in item.items():
+            if not isinstance(value, str) or not value.strip():
+                continue
+
+            # 1. Удаляем полные URL
+            cleaned_value = re.sub(url_pattern, '', value, flags=re.IGNORECASE)
+
+            # 2. Удаляем чувствительные слова
+            cleaned_value = re.sub(sensitive_words_pattern, '', cleaned_value, flags=re.IGNORECASE)
+
+            # 3. Модифицируем оставшиеся URL-подобные строки
+            if protocol_pattern.search(cleaned_value) or www_pattern.search(cleaned_value):
+                # Удаляем протокол
+                value_no_protocol = protocol_pattern.sub('', cleaned_value)
+                # Удаляем ведущий www
+                value_no_www = www_pattern.sub('', value_no_protocol)
+                # Разбиваем по точкам и слешам
+                parts = re.split(r'[./]+', value_no_www)
+                cleaned_value = '/'.join([part for part in parts if part])
+
+            # 4. Нормализуем пробелы и обновляем значение
+            item[key] = re.sub(r'\s+', ' ', cleaned_value).strip()
+
+    return data

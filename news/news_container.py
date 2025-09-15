@@ -8,7 +8,8 @@ import glob
 from typing import List, Dict, Any
 from tqdm.asyncio import tqdm_asyncio
 
-from parsers.google_parser import GoogleParser
+# from parsers.google_parser import GoogleParser
+from parsers.google_parser_new import GoogleParser
 from parsers.tavily_parser import TavilyParser
 from parsers.telegram_parser import TelegramParser
 # from parsers.website_parser import fill_raw_data_by_parse_websites_async
@@ -107,6 +108,7 @@ class ContainerNewsItem:
                 distinct_data.append(item)
 
         return distinct_data
+
 
     async def fill_raw_data_by_parse_websites_async(self, data: List[Dict[str, Any]], max_concurrent: int = 5,
                                                     process_timeout: int = 15000, show_browser: bool = False) -> List[

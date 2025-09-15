@@ -94,27 +94,26 @@ class WebsiteParser:
             timeout_seconds = self.page_load_timeout / 1000
             self.driver.set_page_load_timeout(timeout_seconds)
 
-            if self.show_browser:
-                logger.info(f"Парсинг URL: {url} (таймаут: {timeout_seconds} сек)")
-
             start_time = time.time()
 
             try:
                 self.driver.get(url)
+                print(f"✓ Загружаем: {url}")
             except TimeoutException:
-                logger.info(f"Страница {url} не полностью загружена за {timeout_seconds} секунд, парсим что есть")
+                print(f"⚠ Страница {url} не полностью загружена, парсим что есть")
                 pass
             except Exception as e:
-                logger.warning(f"Ошибка при загрузке {url}: {e}")
+                print(f"✗ Ошибка загрузки {url}: {e}")
+                return None
 
             # Ждем появления body
-            body_timeout = min(5, timeout_seconds / 2)
+            body_timeout = max(5, timeout_seconds / 2)
             try:
                 WebDriverWait(self.driver, body_timeout).until(
                     EC.presence_of_element_located((By.TAG_NAME, "body"))
                 )
             except TimeoutException:
-                logger.warning(f"Body не появился за {body_timeout} секунд для {url}")
+                print(f"⚠ Body не появился для {url}, продолжаем")
 
             # Даем время для загрузки
             elapsed = time.time() - start_time
@@ -128,21 +127,27 @@ class WebsiteParser:
             # Получаем HTML
             html_content = self.driver.page_source
 
-            logger.info(
-                f"Загрузка заняла {time.time() - start_time:.2f} секунд, размер HTML: {len(html_content)} символов")
-
             # Очищаем контент
             cleaned_content = self._clean_content(html_content)
-            logger.info(f"Размер очищенного контента: {len(cleaned_content)} символов")
+
+            # Выводим результат в реальном времени
+            if cleaned_content:
+                print(f"✓ Спарсено: {url} → {len(cleaned_content)} символов")
+            else:
+                print(f"✗ Не удалось спарсить: {url}")
 
             return cleaned_content
 
         except Exception as e:
-            logger.warning(f"Ошибка при парсинге {url}: {e}")
+            print(f"✗ Ошибка парсинга {url}: {e}")
             try:
                 html_content = self.driver.page_source
-                return self._clean_content(html_content)
+                result = self._clean_content(html_content)
+                if result:
+                    print(f"✓ Спарсено (после ошибки): {url} → {len(result)} символов")
+                return result
             except:
+                print(f"✗ Критическая ошибка для {url}")
                 return None
 
     def _quick_behavior(self):
@@ -152,8 +157,9 @@ class WebsiteParser:
             time.sleep(0.3)
             self.driver.execute_script("window.scrollTo(0, 0);")
             time.sleep(0.2)
-        except Exception as e:
-            logger.debug(f"Ошибка при быстром скроллинге: {e}")
+        except Exception:
+            # Игнорируем ошибки скроллинга
+            pass
 
     @staticmethod
     def _remove_sensitive_and_urls(text: str) -> str:
@@ -168,7 +174,6 @@ class WebsiteParser:
     def _clean_content(self, html: str) -> str:
         try:
             if not html or len(html.strip()) < 100:
-                logger.warning("HTML слишком короткий для очистки")
                 return ""
 
             soup = BeautifulSoup(html, 'html.parser')
@@ -198,8 +203,7 @@ class WebsiteParser:
             clean_text = self._remove_sensitive_and_urls('\n'.join(cleaned_lines))
             return clean_text[:50000]
 
-        except Exception as e:
-            logger.warning(f"Ошибка при очистке контента: {e}")
+        except Exception:
             try:
                 return html[:20000]
             except:

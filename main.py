@@ -13,12 +13,16 @@ if __name__ == "__main__":
     mr_conf = MacroRegionConfig()
 
     parser_settings = {
-        # 'AVAILABLE_SOURCES': ['Google', 'Tavily', 'Telegram'],
+        'AVAILABLE_SOURCES': ['Google', 'Tavily', 'Telegram'],
         # 'AVAILABLE_SOURCES': ['Google'],
-        'AVAILABLE_REGIONS': ['Россия'],
+        # 'AVAILABLE_REGIONS': ['Россия'],
+        # 'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[:10],
         'AVAILABLE_CATEGORIES': [
             'Тренды на рынке недвижимости', 'Доступность недвижимости', 'Цены на недвижимость',
-            'Фонд оплаты труда'],
+            'Фонд оплаты труда',
+            'Бизнес',
+            'Сельское хозяйство',
+        ],
         # 'SEARCH_LIMIT_TELEGRAM': 100,
         'PERIOD': 'Июль 2025',
         'DATE_FROM': '2025-08-01',
@@ -38,13 +42,14 @@ if __name__ == "__main__":
         start_time = time.time()
 
         stage = f'{tasks_to_parse.index(task) + 1} / {len(tasks_to_parse)}'
+
         task.print_statistics(stage)
 
         task.parse_processed_data()
 
-        task.parse_raw_data(max_threads=5,
+        task.parse_raw_data(max_threads=4,
                             page_load_timeout=15000,
-                            show_browser=True
+                            show_browser=False
                             )
 
         task.parse_post_processing()

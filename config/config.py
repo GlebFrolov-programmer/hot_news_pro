@@ -59,8 +59,11 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
                        'Tavily': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD}',
                        'Telegram': 'https://t.me/s/{CHANNEL_NAME}'}
 
-    POST_PROCESSING = [filter_raw_data_by_region,
-                       modify_urls]
+    POST_PROCESSING = [
+                       filter_raw_data_by_region,
+                       modify_urls,
+                       clean_sensitive_content
+                       ]
 
     CATEGORIES_SEARCH = {
         'Тренды на рынке недвижимости': [
@@ -107,7 +110,15 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
             'Новости доходов населения',
             'Зарплаты по отраслям',
             'Анализ динамики зарплат',
-        ]
+        ],
+        'Сельское хозяйство': [
+            'Новости сельского хозяйства',
+            'Новости растениеводство',
+            'Новости животноводство',
+            'Сельскохозяйственная техника и технологии',
+            'Государственная поддержка АПК',
+            'Цены сельскохозяйственной продукции '
+        ],
     }
 
     apartments_channels = [
@@ -131,6 +142,10 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         "pataninnews",
         "rudakov_broker",
     ]
+    # business_channels = [
+    #     'rb_ru',
+    #
+    # ]
 
     CATEGORIES_TELEGRAM = {
         'Тренды на рынке недвижимости': apartments_channels,
@@ -138,6 +153,7 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         'Доступность недвижимости': apartments_channels,
         'Первичное жильё': apartments_channels,
         'Вторичное жильё': apartments_channels,
+        # 'Бизнес': business_channels
     }
 
     def generate_config_to_parse(self) -> list:

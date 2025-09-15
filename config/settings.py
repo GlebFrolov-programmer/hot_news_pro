@@ -145,7 +145,9 @@ class ParserSettings:
     AVAILABLE_SOURCES = ['Telegram', 'Google', 'Tavily']
     AVAILABLE_CATEGORIES = [
         'Тренды на рынке недвижимости', 'Цены на недвижимость', 'Первичное жильё', 'Вторичное жильё', 'Доступность недвижимости',
-        'Бизнес', 'Фонд оплаты труда'
+        'Бизнес',
+        'Фонд оплаты труда',
+        'Сельское хозяйство'
     ]
     AVAILABLE_REGIONS = list(RegionSettings.REGIONS_KEYWORDS.keys())
 
