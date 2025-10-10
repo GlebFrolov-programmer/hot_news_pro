@@ -61,8 +61,10 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
 
     POST_PROCESSING = [
                        filter_raw_data_by_region,
-                       modify_urls,
-                       clean_sensitive_content
+                       # modify_urls,
+                       parse_urls_to_dict,
+                       clean_sensitive_content,
+                       # build_urls_from_dict,
                        ]
 
     CATEGORIES_SEARCH = {
@@ -155,6 +157,7 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         'Вторичное жильё': apartments_channels,
         # 'Бизнес': business_channels
     }
+    SCRAPE_DO_TOKEN = 'e86c0b0276aa47af804edf15fde84816e7c506c78b6'
 
     def generate_config_to_parse(self) -> list:
         def extract_keys_from_templates(templates_dict):
@@ -310,7 +313,11 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
                                                'TRUSTED_SOURCES',
                                                'SUBCATEGORIES',
                                                'OUTPUT',
-                                               'REGION_KEYS']),
+                                               'REGION_KEYS',
+                                               'PROXY',
+                                               'SCRAPE_DO_TOKEN',
+                                               'SCRAPERAPI_KEY',
+                                               'SCRAPERAPI_COUNTRY']),
 
                 save_to=self.SAVE_TO
             )

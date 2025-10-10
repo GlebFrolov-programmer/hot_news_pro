@@ -13,19 +13,25 @@ if __name__ == "__main__":
     mr_conf = MacroRegionConfig()
 
     parser_settings = {
-        'AVAILABLE_SOURCES': ['Google', 'Tavily', 'Telegram'],
+        'AVAILABLE_SOURCES': [
+                            'Google',
+                              'Tavily',
+                              'Telegram'
+                              ],
         # 'AVAILABLE_SOURCES': ['Google'],
         # 'AVAILABLE_REGIONS': ['Россия'],
         # 'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[:10],
         'AVAILABLE_CATEGORIES': [
-            'Тренды на рынке недвижимости', 'Доступность недвижимости', 'Цены на недвижимость',
-            'Фонд оплаты труда',
-            'Бизнес',
+            # 'Тренды на рынке недвижимости',
+            # 'Доступность недвижимости',
+            # 'Цены на недвижимость',
+            # 'Фонд оплаты труда',
+            # 'Бизнес',
             'Сельское хозяйство',
         ],
         # 'SEARCH_LIMIT_TELEGRAM': 100,
-        'PERIOD': 'Июль 2025',
-        'DATE_FROM': '2025-08-01',
+        'PERIOD': 'Август 2025',
+        'DATE_FROM': '2025-09-01',
         'SAVE_TO': {
             'TO_EXCEL': False,
             'TO_JSON': True
@@ -47,7 +53,7 @@ if __name__ == "__main__":
 
         task.parse_processed_data()
 
-        task.parse_raw_data(max_threads=4,
+        task.parse_raw_data(max_threads=6,
                             page_load_timeout=15000,
                             show_browser=False
                             )
@@ -62,20 +68,20 @@ if __name__ == "__main__":
         print(f'Время выполнения: {minutes} мин. {seconds} сек.')
 
     # Архивация всех файлов
-    # create_archives(
-    #     directory=mr_conf.OUTPUT_DIR_POST_PROCESSING,
-    #     extensions=["json"],
-    #     max_size_mb=20
-    # )
+    create_archives(
+        directory=mr_conf.OUTPUT_DIR_POST_PROCESSING,
+        extensions=["json"],
+        max_size_mb=80
+    )
 
     # Отправка по почте архивов
-    # send_archives_via_gmail(
-    #     gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
-    #     gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
-    #     recipient_email=mr_conf.AUTHENTICATION['MAIL_SBER'],
-    #     directory_path=mr_conf.OUTPUT_DIR_POST_PROCESSING,
-    #     subject_prefix="Архив ",
-    #     body_text="Архив: ",
-    #     file_pattern="archive_*.zip",  # Только zip файлы
-    #     sort_files=True  # Сортировать по номеру
-    # )
+    send_archives_via_gmail(
+        gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
+        gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
+        recipient_email=mr_conf.AUTHENTICATION['MAIL_SBER'],
+        directory_path=mr_conf.OUTPUT_DIR_POST_PROCESSING,
+        subject_prefix="Архив ",
+        body_text="Архив: ",
+        file_pattern="archive_*.zip",  # Только zip файлы
+        sort_files=True  # Сортировать по номеру
+    )
