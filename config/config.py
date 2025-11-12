@@ -44,8 +44,16 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
 
     MONTH_BEGIN = date.today().replace(day=1)
     MONTH_BEGIN_UTC = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    PERIOD = month_begin_to_period_prev(MONTH_BEGIN)
-    DATE_FROM = str(MONTH_BEGIN)
+
+    # Вычисляем PERIOD после определения всех атрибутов класса
+    @property
+    def PERIOD(self):
+        return self.month_begin_to_period_prev(self.MONTH_BEGIN)
+
+    # Альтернативное решение: вычислять DATE_FROM как свойство
+    @property
+    def DATE_FROM(self):
+        return str(self.MONTH_BEGIN)
 
     CONFIG_NAME = 'MacroRegion'
 
@@ -53,19 +61,21 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
 
     TEMPLATES_FILENAME = {'Google': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
                           'Tavily': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
+                          'Yandex': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
                           'Telegram': '{AVAILABLE_CATEGORIES}_BASE_{PERIOD}_{DATE_FROM}'}
 
     TEMPLATES_PARSE = {'Google': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD} after:{DATE_FROM}',
                        'Tavily': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD}',
+                       'Yandex': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD}',
                        'Telegram': 'https://t.me/s/{CHANNEL_NAME}'}
 
     POST_PROCESSING = [
-                       filter_raw_data_by_region,
-                       # modify_urls,
-                       parse_urls_to_dict,
-                       clean_sensitive_content,
-                       # build_urls_from_dict,
-                       ]
+        filter_raw_data_by_region,
+        # modify_urls,
+        parse_urls_to_dict,
+        clean_sensitive_content,
+        # build_urls_from_dict,
+    ]
 
     CATEGORIES_SEARCH = {
         'Тренды на рынке недвижимости': [
@@ -121,6 +131,13 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
             'Государственная поддержка АПК',
             'Цены сельскохозяйственной продукции '
         ],
+        'Неплатежи': [
+            'Компании экономят на зарплатах',
+            'Скрытый рост безработицы у компаний',
+            'Компания перешла на четырехдневную рабочую неделю',
+            'Неплатежи контрагентам крупных компаний',
+            'Рост дебиторской задолженности компаний'
+        ]
     }
 
     apartments_channels = [
@@ -183,7 +200,6 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         values_product = product(*config_settings.values())
 
         config_to_parse = []
-
 
         for combination in values_product:
             item = dict(zip(keys, combination))
@@ -259,6 +275,46 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
 
                         to_parse[source] = subqueries
 
+                    elif source == 'Yandex':
+                        filter_categories = []
+                        subqueries = []
+
+                        for i, cat in enumerate(self.CATEGORIES_SEARCH[category]):
+                            add = filter_categories + [cat]
+                            item['SUBCATEGORIES'] = f'{" OR ".join(add)}'
+                            # Проверяем длину итогового запроса (в словах) по шаблону
+                            if len(self.TEMPLATES_PARSE[source].format(**item).split(' ')) <= 32:
+                                filter_categories.append(cat)
+                                # Если это последний элемент, добавляем текущий подзапрос в список
+                                if i == len(self.SUBCATEGORIES) - 1:
+                                    item['SUBCATEGORIES'] = f'{" OR ".join(filter_categories)}'
+                                    subquery = {
+                                        'query': self.TEMPLATES_PARSE[source].format(**item),
+                                        'search_limit': self.SEARCH_LIMIT_YANDEX * len(filter_categories)
+                                    }
+                                    subqueries.append(subquery)
+                            else:
+                                # Если текущий элемент не помещается, добавляем подзапрос из предыдущих категорий
+                                item['SUBCATEGORIES'] = f'{" OR ".join(filter_categories)}'
+                                subquery = {
+                                    'query': self.TEMPLATES_PARSE[source].format(**item),
+                                    'search_limit': self.SEARCH_LIMIT_YANDEX * len(filter_categories)
+                                }
+                                subqueries.append(subquery)
+                                # Начинаем новый подзапрос с текущей категорией
+                                filter_categories = [cat]
+
+                                # Если это последний элемент, то добавляем его тоже
+                                if i == len(self.SUBCATEGORIES) - 1:
+                                    item['SUBCATEGORIES'] = cat
+                                    subquery = {
+                                        'query': self.TEMPLATES_PARSE[source].format(**item),
+                                        'search_limit': self.SEARCH_LIMIT_YANDEX
+                                    }
+                                    subqueries.append(subquery)
+
+                        to_parse[source] = subqueries
+
                     elif source == 'Tavily':
 
                         filter_categories = []
@@ -325,6 +381,3 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
             config_to_parse.append(сontainer_news_item)
 
         return config_to_parse
-
-
-# tasks = [NewsItem1, News_item2, ....]

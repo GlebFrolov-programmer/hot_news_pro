@@ -15,23 +15,24 @@ if __name__ == "__main__":
     parser_settings = {
         'AVAILABLE_SOURCES': [
                             'Google',
-                              'Tavily',
-                              'Telegram'
+                            'Tavily',
+                            'Yandex',
+                            'Telegram'
                               ],
         # 'AVAILABLE_SOURCES': ['Google'],
         # 'AVAILABLE_REGIONS': ['Россия'],
-        # 'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[:10],
+        'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[:10],
         'AVAILABLE_CATEGORIES': [
-            # 'Тренды на рынке недвижимости',
+            'Тренды на рынке недвижимости',
             # 'Доступность недвижимости',
             # 'Цены на недвижимость',
-            # 'Фонд оплаты труда',
-            # 'Бизнес',
+            'Фонд оплаты труда',
+            'Бизнес',
             'Сельское хозяйство',
         ],
         # 'SEARCH_LIMIT_TELEGRAM': 100,
-        'PERIOD': 'Август 2025',
-        'DATE_FROM': '2025-09-01',
+        'PERIOD': 'Октябрь 2025',
+        'DATE_FROM': '2025-10-01',
         'SAVE_TO': {
             'TO_EXCEL': False,
             'TO_JSON': True

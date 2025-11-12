@@ -14,7 +14,7 @@ from parsers.tavily_parser import TavilyParser
 from parsers.telegram_parser import TelegramParser
 # from parsers.website_parser import fill_raw_data_by_parse_websites_async
 from parsers.website_parser import WebsiteParser
-# from parsers.website_parser_old import WebsiteParser
+from parsers.yandex_parser import YandexParser
 
 
 @dataclass
@@ -58,6 +58,7 @@ class ContainerNewsItem:
             'Google': GoogleParser,
             'Tavily': TavilyParser,
             'Telegram': TelegramParser,
+            'Yandex': YandexParser,
         }
 
         for source, queries_or_urls in self.to_parse.items():

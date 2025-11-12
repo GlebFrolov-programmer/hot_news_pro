@@ -123,6 +123,7 @@ class RegionSettings:
 
 class ParserSettings:
     SEARCH_LIMIT_GOOGLE = 5
+    SEARCH_LIMIT_YANDEX = 5
     SEARCH_LIMIT_TAVILY = 5
     SEARCH_LIMIT_TELEGRAM = 999_999
 

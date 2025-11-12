@@ -145,8 +145,8 @@ class TelegramParser(BaseParser):
                                     source=self.class_name,
                                     metadata=self.metadata,
                                     url=self.parameters.get('TEMPLATE_URL_TELEGRAM',
-                                                            "https://t.me/s/{CHANNEL_NAME}").format(
-                                        CHANNEL_NAME=channel_name),
+                                                            "https://t.me/s/{CHANNEL_NAME}/{ID_MESSAGE}").format(
+                                        CHANNEL_NAME=channel_name, ID_MESSAGE=message.id),
                                     title=self.get_title_from_post(message.text),
                                     raw_data=message.text,
                                     approved=self.check_approved_source(channel_name)
