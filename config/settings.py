@@ -32,7 +32,7 @@ class APISettings:
 
 class RegionSettings:
     REGIONS_KEYWORDS = {
-        "Россия": ['рф', 'россия', 'российск', 'федерация'],
+        # "Россия": ['рф', 'россия', 'российск', 'федерация'],
         "Нижегородская область": ["нижний новгород", "нижегород", "н.новгород", "дзержинск", "арзамас", "саров", "бор", "кстово"],
         "г. Москва": ["москва", "мск", "московский", "столица", "москвич"],
         "г. Санкт-Петербург": ["санкт-петербург", "питер", "спб", "петербург", "ленинград", "ленобл"],
@@ -122,9 +122,9 @@ class RegionSettings:
 
 
 class ParserSettings:
-    SEARCH_LIMIT_GOOGLE = 5
-    SEARCH_LIMIT_YANDEX = 5
-    SEARCH_LIMIT_TAVILY = 5
+    SEARCH_LIMIT_GOOGLE = 4
+    SEARCH_LIMIT_YANDEX = 4
+    SEARCH_LIMIT_TAVILY = 4
     SEARCH_LIMIT_TELEGRAM = 999_999
 
     DATE_FROM = str(date.today().replace(day=1))

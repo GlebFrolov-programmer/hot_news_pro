@@ -79,37 +79,69 @@ class ContainerNewsItem:
                 print(f'\n     >> SKIPPING {source} {self.metadata}, because files already exist!')
             # results.append(parser_instance.raw_data)
 
+    # @staticmethod
+    # def get_distinct_data(
+    #         data: List[Dict[str, Any]],
+    #         unique_fields: List[str]
+    # ) -> List[Dict[str, Any]]:
+    #     """
+    #     Возвращает список уникальных словарей из data,
+    #     уникальность определяется по значениям полей из unique_fields.
+    #
+    #     :param data: Список словарей для фильтрации.
+    #     :param unique_fields: Список полей, по которым определяется уникальность.
+    #     :return: Список уникальных словарей.
+    #     """
+    #     seen = set()
+    #     distinct_data = []
+    #
+    #     for item in data:
+    #         # Формируем ключ из значений полей unique_fields
+    #         try:
+    #             key = tuple(item[field] for field in unique_fields)
+    #         except KeyError as e:
+    #             # Если какого-то поля нет, можно пропустить или обработать иначе
+    #             print(f"Отсутствует поле {e} в записи: {item}, пропускаем.")
+    #             continue
+    #
+    #         if key not in seen:
+    #             seen.add(key)
+    #             distinct_data.append(item)
+    #
+    #     return distinct_data
+
     @staticmethod
     def get_distinct_data(
             data: List[Dict[str, Any]],
             unique_fields: List[str]
     ) -> List[Dict[str, Any]]:
-        """
-        Возвращает список уникальных словарей из data,
-        уникальность определяется по значениям полей из unique_fields.
-
-        :param data: Список словарей для фильтрации.
-        :param unique_fields: Список полей, по которым определяется уникальность.
-        :return: Список уникальных словарей.
-        """
-        seen = set()
+        seen = {}
         distinct_data = []
 
         for item in data:
-            # Формируем ключ из значений полей unique_fields
             try:
                 key = tuple(item[field] for field in unique_fields)
             except KeyError as e:
-                # Если какого-то поля нет, можно пропустить или обработать иначе
                 print(f"Отсутствует поле {e} в записи: {item}, пропускаем.")
                 continue
 
             if key not in seen:
-                seen.add(key)
+                seen[key] = len(distinct_data)
                 distinct_data.append(item)
+            else:
+                idx = seen[key]
+                existing_source = distinct_data[idx].get('source', '')
+                new_source = item.get('source', '')
+                if new_source:
+                    if existing_source:
+                        # Объединяем с запятой, избегая дублирования источников
+                        sources_set = set(s.strip() for s in existing_source.split(','))
+                        if new_source not in sources_set:
+                            distinct_data[idx]['source'] = existing_source + ',' + new_source
+                    else:
+                        distinct_data[idx]['source'] = new_source
 
         return distinct_data
-
 
     async def fill_raw_data_by_parse_websites_async(self, data: List[Dict[str, Any]], max_concurrent: int = 5,
                                                     process_timeout: int = 15000, show_browser: bool = False) -> List[

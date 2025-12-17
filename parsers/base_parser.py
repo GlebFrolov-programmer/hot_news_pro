@@ -85,7 +85,7 @@ class BaseParser(ABC):
             print(f"Total sources collected: {total}")
             print(f"Verified sources: {verified} ({verified / total:.1%})")
         except:
-            raise
+            # raise
             print('ERROR FOR PARSING SOURCE!!!')
 
     def check_approved_source(self, source) -> bool:
