@@ -71,10 +71,8 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
 
     POST_PROCESSING = [
         filter_raw_data_by_region,
-        # modify_urls,
         parse_urls_to_dict,
         clean_sensitive_content,
-        # build_urls_from_dict,
     ]
 
     CATEGORIES_SEARCH = {
@@ -137,7 +135,31 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
             'Компания перешла на четырехдневную рабочую неделю',
             'Неплатежи контрагентам крупных компаний',
             'Рост дебиторской задолженности компаний'
+        ],
+        'Туризм': [
+            'Новости туризма',
+            'Спрос на туристические услуги',
+            'Тенденции туризма',
+            'Господдержка туризма',
         ]
+    #     'Авито': [
+    #         "Что купил Авито в 2023-2025 годах?",
+    #         "Кто владелец Авито",
+    #         "Доли владения Авито",
+    #         "Новый бизнес Авито",
+    #         "Новые направления Авито",
+    #         "Маркетплейс Авито",
+    #         "Авито Молл",
+    #         "Авито Финанс",
+    #         "Финтех Авито",
+    #         "Что входит в Финтех Авито?",
+    #         "Какие компании входят в Авито?",
+    #         "Выручка Авито",
+    #         "Финансы Авито",
+    #         "Обороты Авито",
+    #         "Сколько клиентов у Авито",
+    #         "Авито анонсировал"
+    # ]
     }
 
     apartments_channels = [
@@ -172,6 +194,7 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         'Доступность недвижимости': apartments_channels,
         'Первичное жильё': apartments_channels,
         'Вторичное жильё': apartments_channels,
+        # 'Авито': ['avito', 'hikollegi']
         # 'Бизнес': business_channels
     }
     SCRAPE_DO_TOKEN = 'e86c0b0276aa47af804edf15fde84816e7c506c78b6'

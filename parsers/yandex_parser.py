@@ -1,23 +1,13 @@
 import json
 import os
-import random
 import time
 from abc import ABC
 from datetime import datetime
-from urllib.parse import urlencode, urlparse, parse_qs
 from typing import List, Dict, Optional
-
 import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
-from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
+
+# Импорты для Yandex API
+from yandex_cloud_ml_sdk import YCloudML
 
 from parsers.base_parser import BaseParser
 from news.news_item import NewsItem
@@ -31,16 +21,20 @@ class YandexParser(BaseParser, ABC):
         self.requests_to_parse = requests_to_parse
         self.metadata = metadata
         self.parameters = parameters
-        self.driver = None
-        self.setup_driver()
+        self.sdk = None
+        self.search_api = None
+
+        # Инициализация Yandex SDK
+        self.init_yandex_sdk()
 
         try:
             self.raw_data = [i for i in list(set(self.parse()))]
         except RetryError as e:
             print(f"Parsing failed after retries: {e}, продолжаем работу без результатов.")
             self.raw_data = []
-        finally:
-            self.close_driver()
+        except Exception as e:
+            print(f"Ошибка парсинга: {e}")
+            self.raw_data = []
 
         self.save_to = save_to
 
@@ -90,231 +84,169 @@ class YandexParser(BaseParser, ABC):
     def parameters(self, value: dict):
         self._parameters = value
 
-    def setup_driver(self):
-        """Настройка драйвера Selenium"""
+    def init_yandex_sdk(self):
+        """Инициализация Yandex Cloud ML SDK"""
         try:
-            chrome_options = Options()
+            print("🔧 Инициализация Yandex Search API...")
 
-            # Stealth-опции
-            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
+            # Получаем параметры из конфигурации
+            folder_id = self.parameters['AUTHENTICATION']['YANDEX_FOLDER_ID']
+            auth_token = self.parameters['AUTHENTICATION']['YANDEX_AUTH_API']
+            user_agent = self.parameters.get('USER_AGENT',
+                                             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 YaBrowser/25.2.0.0 Safari/537.36")
 
-            # Дополнительные опции
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
+            # Инициализация SDK
+            self.sdk = YCloudML(
+                folder_id=folder_id,
+                auth=auth_token
+            )
 
-            # User-Agent
-            chrome_options.add_argument(
-                "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            # Настройка логирования
+            # self.sdk.setup_default_logging("error")
 
-            # Установка драйвера
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # Создание Search API объекта
+            self.search_api = self.sdk.search_api.web(
+                search_type=self.parameters.get('SEARCH_TYPE', 'ru'),
+                user_agent=user_agent,
+            )
 
-            # Скрываем WebDriver
-            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
-            return True
+            print("✅ Yandex Search API инициализирован")
 
         except Exception as e:
-            print(f"❌ Ошибка настройки драйвера: {e}")
-            raise WebDriverException(f"Driver setup failed: {e}")
+            print(f"❌ Ошибка инициализации Yandex SDK: {e}")
+            raise
 
-    def close_driver(self):
-        """Закрытие драйвера"""
-        if self.driver:
-            self.driver.quit()
-            print("✅ Драйвер закрыт")
-
-    def random_sleep(self, min_time: float, max_time: float):
-        """Случайная задержка"""
-        sleep_time = random.uniform(min_time, max_time)
-        time.sleep(sleep_time)
-        return sleep_time
-
-    def get_timings(self) -> Dict:
-        """Получение настроек таймингов"""
-        default_timings = {
-            'page_load': 15,
-            'element_wait': 15,
-            'typing_delay_min': 0.01,
-            'typing_delay_max': 0.03,
-            'between_queries_min': 2,
-            'between_queries_max': 3,
-            'after_search_min': 3,
-            'after_search_max': 3,
-            'between_pages_min': 1,
-            'between_pages_max': 2,
-        }
-
-        # Можно добавить логику для кастомных таймингов из parameters
-        if self.parameters.get('timings'):
-            default_timings.update(self.parameters['timings'])
-
-        return default_timings
-
-    def perform_search(self, query: str, timings: Dict) -> bool:
-        """Выполнение поискового запроса в Яндексе"""
+    def perform_api_search(self, query: str, page: int = 0) -> Optional[str]:
+        """Выполнение поискового запроса через Yandex API"""
         try:
-            print(f"🔍 Поиск: '{query}'")
+            print(f"🔍 API поиск: '{query}' (страница {page + 1})")
 
-            # Формируем URL с параметрами для фильтра по времени
-            params = {
-                'text': query,
-                # 'lr': 213,  # Москва и область
-                'p': 0,  # страница
-                'within': 1  # 2 недели
-            }
+            # Получаем формат результатов
+            format = self.parameters.get('RESULT_FORMAT', 'xml')
 
-            base_url = "https://yandex.ru/search/"
-            search_url = f"{base_url}?{urlencode(params)}"
+            # Выполняем асинхронный запрос через API
+            operation = self.search_api.run_deferred(query, format=format, page=page)
 
-            print(f"🌐 Открываем Яндекс: {search_url}")
-            self.driver.get(search_url)
+            # Ждем завершения операции
+            print("⏳ Ожидание ответа от API...")
+            search_result = operation.wait(poll_interval=1)
 
-            print("⏳ Ждем загрузки результатов...")
-            WebDriverWait(self.driver, timings['page_load']).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".serp-item"))
-            )
-            print("✓ Результаты поиска загружены")
+            # Декодируем результат
+            result_content = search_result.decode('utf-8')
 
-            # Задержка после поиска
-            pause = self.random_sleep(
-                timings['after_search_min'],
-                timings['after_search_max']
-            )
-            print(f"⏸️ Пауза после поиска: {pause:.1f} сек")
-
-            return True
+            return result_content
 
         except Exception as e:
-            print(f"❌ Ошибка при поиске '{query}': {e}")
-            return False
+            print(f"❌ Ошибка при API поиске '{query}': {e}")
+            return None
 
-    def is_advertisement(self, item) -> bool:
-        """Проверка, является ли результат рекламным"""
-        try:
-            item.find_element(By.CSS_SELECTOR, ".label_theme_ad")
-            return True
-        except NoSuchElementException:
-            return False
-
-    def extract_title_and_url(self, item) -> tuple[Optional[str], Optional[str]]:
-        """Извлечение заголовка и ссылки из элемента результата"""
-        try:
-            title_element = item.find_element(By.CSS_SELECTOR, ".OrganicTitle-Link, .serp-item__title")
-            title = title_element.text.strip()
-            url = title_element.get_attribute("href")
-            return title, url
-
-        except NoSuchElementException:
-            try:
-                title_element = item.find_element(By.CSS_SELECTOR, "h2 a")
-                title = title_element.text.strip()
-                url = title_element.get_attribute("href")
-                return title, url
-            except:
-                return None, None
-
-    def extract_date_info(self, item) -> str:
-        """Извлечение информации о дате публикации"""
-        try:
-            date_element = item.find_element(By.CSS_SELECTOR, ".OrganicTextContentSpan, .datetime")
-            return date_element.text.strip()
-        except NoSuchElementException:
-            return "Дата не указана"
-
-    def parse_page(self) -> List[Dict]:
-        """Парсинг результатов на текущей странице"""
+    def parse_xml_response(self, api_response: str) -> List[Dict]:
+        """Парсинг XML ответа от API"""
         results = []
 
         try:
+            from xml.etree import ElementTree as ET
+
+            # Парсим XML
+            root = ET.fromstring(api_response)
+
             # Ищем все элементы с результатами
-            search_items = self.driver.find_elements(By.CSS_SELECTOR, ".serp-item")
-            print(f"📋 Найдено элементов на странице: {len(search_items)}")
+            # Предполагаемая структура ответа
+            for doc in root.findall('.//doc'):
+                result = {}
 
-            for i, item in enumerate(search_items, 1):
-                try:
-                    # Пропускаем рекламные результаты
-                    if self.is_advertisement(item):
-                        print(f"  Элемент {i}: реклама - пропускаем")
-                        continue
+                # Извлекаем заголовок
+                title_elem = doc.find('title')
+                if title_elem is not None and title_elem.text:
+                    result['title'] = title_elem.text.strip()
 
-                    # Извлекаем заголовок и ссылку
-                    title, url = self.extract_title_and_url(item)
+                # Извлекаем URL
+                url_elem = doc.find('url')
+                if url_elem is not None and url_elem.text:
+                    result['url'] = url_elem.text.strip()
 
-                    if title and url:
-                        date_info = self.extract_date_info(item)
+                # Извлекаем дату, если есть
+                date_elem = doc.find('date')
+                if date_elem is not None and date_elem.text:
+                    result['date'] = date_elem.text.strip()
 
-                        results.append({
-                            'title': title,
-                            'url': url,
-                            'date': date_info,
-                        })
-
-                        print(f"  {i}. {title[:60]}...")
-
-                except Exception as e:
-                    print(f"  ⚠️ Ошибка при парсинге элемента {i}: {e}")
-                    continue
+                # Добавляем результат только если есть заголовок и URL
+                if result.get('title') and result.get('url'):
+                    results.append(result)
 
         except Exception as e:
-            print(f"❌ Ошибка при парсинге страницы: {e}")
+            print(f"❌ Ошибка парсинга XML: {e}")
 
         return results
 
-    def navigate_to_page(self, query: str, page_number: int, timings: Dict) -> bool:
-        """Переход на страницу с изменением параметра p в URL"""
+    def parse_html_response(self, api_response: str) -> List[Dict]:
+        """Парсинг HTML ответа от API"""
+        results = []
+
         try:
-            if page_number == 1:
-                return True  # Первая страница уже загружена
+            from bs4 import BeautifulSoup
 
-            print(f"📄 Переходим на страницу {page_number}...")
+            soup = BeautifulSoup(api_response, 'html.parser')
 
-            params = {
-                'text': query,
-                # 'lr': 213,  # Москва и область
-                'p': page_number - 1,  # страницы нумеруются с 0
-                'within': 1  # 2 недели
-            }
+            # Ищем элементы результатов в HTML
+            result_divs = soup.find_all('div', class_='serp-item') or soup.find_all('li', class_='serp-item')
 
-            base_url = "https://yandex.ru/search/"
-            search_url = f"{base_url}?{urlencode(params)}"
+            for div in result_divs:
+                result = {}
 
-            print(f"🌐 Переходим по URL: {search_url}")
-            self.driver.get(search_url)
+                # Извлекаем заголовок и ссылку
+                title_elem = div.find('h2') or div.find('a', class_='OrganicTitle-Link')
+                if title_elem:
+                    title_text = title_elem.get_text(strip=True)
+                    if title_text:
+                        result['title'] = title_text
 
-            print("⏳ Ждем загрузки результатов...")
-            WebDriverWait(self.driver, timings['page_load']).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".serp-item"))
-            )
+                    url = title_elem.get('href', '')
+                    if url:
+                        result['url'] = url
 
-            self.random_sleep(timings['between_pages_min'], timings['between_pages_max'])
-            print(f"✓ Успешно перешли на страницу {page_number}")
-            return True
+                # Извлекаем дату
+                date_elem = div.find('span', class_='datetime')
+                if date_elem:
+                    date_text = date_elem.get_text(strip=True)
+                    if date_text:
+                        result['date'] = date_text
+
+                # Добавляем результат только если есть заголовок и URL
+                if result.get('title') and result.get('url'):
+                    results.append(result)
 
         except Exception as e:
-            print(f"❌ Ошибка при переходе на страницу {page_number}: {e}")
-            return False
+            print(f"❌ Ошибка парсинга HTML: {e}")
+
+        return results
+
+    def parse_api_response(self, api_response: str) -> List[Dict]:
+        """Парсинг ответа от API в зависимости от формата"""
+        format = self.parameters.get('RESULT_FORMAT', 'xml').lower()
+
+        if format == 'xml':
+            return self.parse_xml_response(api_response)
+        elif format == 'html':
+            return self.parse_html_response(api_response)
+        else:
+            print(f"⚠️ Неизвестный формат: {format}")
+            return []
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=8, max=15),
-        retry=retry_if_exception_type((WebDriverException, TimeoutException))
+        retry=retry_if_exception_type((Exception,))
     )
     def parse(self) -> list[NewsItem]:
-        """Основной метод парсинга с использованием Selenium и пагинацией"""
+        """Основной метод парсинга с использованием Yandex API"""
 
-        print(f'\n🔎 YANDEX SCRAPING {self.metadata}')
+        print(f'\n🔎 YANDEX API SCRAPING {self.metadata}')
 
-        if not self.driver:
-            raise WebDriverException("Драйвер не инициализирован")
+        if not self.search_api:
+            raise Exception("Search API не инициализирован")
 
         news_items = []
-        timings = self.get_timings()
         total_queries = len(self.requests_to_parse)
 
         for i, request in enumerate(self.requests_to_parse, 1):
@@ -330,50 +262,71 @@ class YandexParser(BaseParser, ABC):
             print(f'    Лимит результатов: {max_results}')
 
             try:
-                # Выполняем поиск
-                if self.perform_search(query, timings):
-                    all_results = []
-                    page = 0
+                all_results = []
+                page = 0
 
-                    # Парсим результаты со всех страниц
-                    while len(all_results) < max_results:
-                        page += 1
-                        print(f"      📖 Страница {page}")
+                # Парсим результаты со всех страниц
+                while len(all_results) < max_results:
+                    page += 1
+                    print(f"      📖 Страница {page}")
 
-                        # Парсим текущую страницу
-                        page_results = self.parse_page()
-                        all_results.extend(page_results)
+                    # Выполняем API запрос
+                    api_response = self.perform_api_search(query, page - 1)
 
-                        print(f"      📊 Найдено на странице: {len(page_results)}")
-                        print(f"      📊 Всего найдено: {len(all_results)}")
+                    if not api_response:
+                        print(f"      ⚠️ Пустой ответ от API")
+                        break
 
-                        # Проверяем лимит
-                        if len(all_results) >= max_results:
-                            all_results = all_results[:max_results]
-                            print(f"      ✅ Достигнут лимит в {max_results} результатов")
-                            break
+                    # Парсим ответ
+                    page_results = self.parse_api_response(api_response)
 
-                        # Пробуем перейти на следующую страницу
-                        if not self.navigate_to_page(query, page + 1, timings):
-                            print(f"      ⚠️ Не удалось перейти на следующую страницу")
-                            break
+                    # Фильтруем дубликаты по URL
+                    unique_urls = set()
+                    filtered_results = []
 
-                    # Создаем NewsItem для каждого результата
-                    for j, result in enumerate(all_results, 1):
+                    for result in page_results:
+                        url = result.get('url', '')
+                        if url and url not in unique_urls:
+                            unique_urls.add(url)
+                            filtered_results.append(result)
+
+                    all_results.extend(filtered_results)
+
+                    print(f"      📊 Найдено на странице: {len(filtered_results)}")
+                    print(f"      📊 Всего найдено: {len(all_results)}")
+
+                    # Проверяем лимит
+                    if len(all_results) >= max_results:
+                        all_results = all_results[:max_results]
+                        print(f"      ✅ Достигнут лимит в {max_results} результатов")
+                        break
+
+                    # Проверяем, есть ли еще результаты
+                    if len(page_results) == 0:
+                        print(f"      ⚠️ Больше нет результатов")
+                        break
+
+                    # Пауза между страницами
+                    time.sleep(1)
+
+                # Создаем NewsItem для каждого результата
+                for j, result in enumerate(all_results, 1):
+                    title = result.get('title', '')
+                    url = result.get('url', '')
+
+                    if title and url:
                         news_items.append(
                             NewsItem(
                                 source=self.class_name,
                                 metadata=self.metadata,
-                                url=result['url'],
-                                title=result['title'],
-                                approved=self.check_approved_source(result['url'])
+                                url=url,
+                                title=title,
+                                approved=self.check_approved_source(url)
                             )
                         )
-                        print(f"        {j}. {result['title'][:70]}...")
+                        print(f"        {j}. {title[:70]} {url}...")
 
-                    print(f"      ✅ Всего уникальных результатов: {len(all_results)}")
-                else:
-                    print(f"      ❌ Не удалось выполнить поиск")
+                print(f"      ✅ Всего уникальных результатов: {len(all_results)}")
 
             except Exception as e:
                 print(f"Error processing query '{query}': {e}")
@@ -381,10 +334,7 @@ class YandexParser(BaseParser, ABC):
 
             # Пауза между запросами
             if i < total_queries:
-                pause = self.random_sleep(
-                    timings['between_queries_min'],
-                    timings['between_queries_max']
-                )
-                print(f"      ⏳ Пауза между запросами: {pause:.1f} сек...")
+                print(f"      ⏳ Пауза между запросами: 2 сек...")
+                time.sleep(2)
 
         return news_items

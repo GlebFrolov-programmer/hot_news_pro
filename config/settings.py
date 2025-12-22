@@ -26,13 +26,15 @@ class APISettings:
         'GOOGLE_CLOUD_API_KEY': get_env_var("GOOGLE_CLOUD_API_KEY"),
         'GMAIL': get_env_var("GMAIL"),
         'PASS_GMAIL': get_env_var("PASS_GMAIL_PYTHON_ARCHIVER"),
-        'MAIL_SBER': get_env_var("MAIL_SBER")
+        'MAIL_SBER': get_env_var("MAIL_SBER"),
+        'YANDEX_FOLDER_ID': get_env_var("YANDEX_FOLDER_ID"),
+        'YANDEX_AUTH_API': get_env_var("YANDEX_AUTH_API"),
     }
 
 
 class RegionSettings:
     REGIONS_KEYWORDS = {
-        # "Россия": ['рф', 'россия', 'российск', 'федерация'],
+        "Россия": ['рф', 'россия', 'российск', 'федерация'],
         "Нижегородская область": ["нижний новгород", "нижегород", "н.новгород", "дзержинск", "арзамас", "саров", "бор", "кстово"],
         "г. Москва": ["москва", "мск", "московский", "столица", "москвич"],
         "г. Санкт-Петербург": ["санкт-петербург", "питер", "спб", "петербург", "ленинград", "ленобл"],
@@ -148,7 +150,8 @@ class ParserSettings:
         'Тренды на рынке недвижимости', 'Цены на недвижимость', 'Первичное жильё', 'Вторичное жильё', 'Доступность недвижимости',
         'Бизнес',
         'Фонд оплаты труда',
-        'Сельское хозяйство'
+        'Сельское хозяйство',
+        'Туризм'
     ]
     AVAILABLE_REGIONS = list(RegionSettings.REGIONS_KEYWORDS.keys())
 
