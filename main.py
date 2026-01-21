@@ -1,3 +1,5 @@
+import logging
+import os
 import time
 from datetime import datetime, timezone, date
 import warnings
@@ -6,6 +8,10 @@ from config import MacroRegionConfig
 from tools.archiver import create_archives
 from tools.email_sender import send_archives_via_gmail
 
+# Отключаем предупреждения о fork для gRPC
+warnings.filterwarnings("ignore", message="fork")
+warnings.filterwarnings("ignore", category=UserWarning)
+logging.getLogger('grpc').setLevel(logging.CRITICAL)
 warnings.filterwarnings("ignore")  # Отключает все warnings
 
 if __name__ == "__main__":
@@ -18,21 +24,16 @@ if __name__ == "__main__":
                             'Tavily',
                             'Yandex',
                             'Telegram'
-                              ],
-        # 'AVAILABLE_SOURCES': ['Google'],
-        # 'AVAILABLE_REGIONS': ['Россия'],
-        'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS,
+                            ],
+        'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[1:],
         'AVAILABLE_CATEGORIES': [
             'Тренды на рынке недвижимости',
             'Доступность недвижимости',
-            # 'Цены на недвижимость',
             'Фонд оплаты труда',
             'Бизнес',
-            # 'Сельское хозяйство',
         ],
-        # 'SEARCH_LIMIT_TELEGRAM': 100,
-        # 'PERIOD': 'Октябрь 2025',
-        # 'DATE_FROM': '2025-10-01',
+        # 'PERIOD': 'Август 2025',
+        # 'DATE_FROM': '2025-09-01',
         'SAVE_TO': {
             'TO_EXCEL': False,
             'TO_JSON': True
@@ -45,6 +46,12 @@ if __name__ == "__main__":
 
     tasks_to_parse = mr_conf.generate_config_to_parse()
 
+    parser_settings['AVAILABLE_CATEGORIES'] = 'Туризм'
+    parser_settings['PERIOD'] = '2025 год'
+    parser_settings['DATE_FROM'] = '2025-01-01'
+    mr_conf.set_parser_settings(parser_settings)
+    tasks_to_parse += mr_conf.generate_config_to_parse()
+
     for task in tasks_to_parse:
         start_time = time.time()
 
@@ -55,7 +62,7 @@ if __name__ == "__main__":
         task.parse_processed_data()
 
         task.parse_raw_data(max_threads=6,
-                            page_load_timeout=15000,
+                            page_load_timeout=8000,
                             show_browser=False
                             )
 
@@ -78,7 +85,7 @@ if __name__ == "__main__":
     # Отправка по почте архивов
     send_archives_via_gmail(
         gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
-        gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
+         gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
         recipient_email=mr_conf.AUTHENTICATION['MAIL_SBER'],
         directory_path=mr_conf.OUTPUT_DIR_POST_PROCESSING,
         subject_prefix="Архив ",
