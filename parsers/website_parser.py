@@ -60,6 +60,9 @@ class WebsiteParser:
             loop = asyncio.get_event_loop()
             self.driver = await loop.run_in_executor(None, webdriver.Chrome, chrome_options)
 
+            # Установка таймаута чтения HTTP-соединения до 20 секунд
+            self.driver.command_executor._client_config._timeout = 20
+
             if not self.show_browser:
                 await loop.run_in_executor(None, self.driver.set_window_size, 1920, 1080)
         except Exception as e:
