@@ -25,7 +25,7 @@ class APISettings:
         'TOGETHER_API_KEY': get_env_var("TOGETHER_API_KEY"),
         'GOOGLE_CLOUD_API_KEY': get_env_var("GOOGLE_CLOUD_API_KEY"),
         'GMAIL': get_env_var("GMAIL"),
-        'PASS_GMAIL': get_env_var("PASS_GMAIL_PYTHON_ARCHIVER"),
+        'PASS_GMAIL': get_env_var("PASS_GMAIL"),
         'MAIL_SBER': get_env_var("MAIL_SBER"),
         'YANDEX_FOLDER_ID': get_env_var("YANDEX_FOLDER_ID"),
         'YANDEX_AUTH_API': get_env_var("YANDEX_AUTH_API"),

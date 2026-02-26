@@ -47,8 +47,8 @@ if __name__ == "__main__":
     tasks_to_parse = mr_conf.generate_config_to_parse()
 
     parser_settings['AVAILABLE_CATEGORIES'] = 'Туризм'
-    parser_settings['PERIOD'] = '2025 год'
-    parser_settings['DATE_FROM'] = '2025-01-01'
+    parser_settings['PERIOD'] = '2026 год'
+    parser_settings['DATE_FROM'] = '2026-07-01'
     mr_conf.set_parser_settings(parser_settings)
     tasks_to_parse += mr_conf.generate_config_to_parse()
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         max_size_mb=80
     )
 
-    # Отправка по почте архивов
+    # Отправка по почте архивов (если у почты gmail нет 2-ух факторной аутентификации)
     send_archives_via_gmail(
         gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
          gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
