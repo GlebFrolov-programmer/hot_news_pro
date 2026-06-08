@@ -23,7 +23,7 @@ if __name__ == "__main__":
                             'Google',
                             'Tavily',
                             'Yandex',
-                            'Telegram'
+                            # 'Telegram'
                             ],
         'AVAILABLE_REGIONS': mr_conf.AVAILABLE_REGIONS[1:],
         'AVAILABLE_CATEGORIES': [
@@ -32,8 +32,8 @@ if __name__ == "__main__":
             'Фонд оплаты труда',
             'Бизнес',
         ],
-        # 'PERIOD': 'Август 2025',
-        # 'DATE_FROM': '2025-09-01',
+        'PERIOD': 'Апрель 2026',
+        'DATE_FROM': '2026-05-01',
         'SAVE_TO': {
             'TO_EXCEL': False,
             'TO_JSON': True
@@ -47,8 +47,8 @@ if __name__ == "__main__":
     tasks_to_parse = mr_conf.generate_config_to_parse()
 
     parser_settings['AVAILABLE_CATEGORIES'] = 'Туризм'
-    parser_settings['PERIOD'] = '2025 год'
-    parser_settings['DATE_FROM'] = '2025-07-01'
+    parser_settings['PERIOD'] = '2026 год'
+    parser_settings['DATE_FROM'] = '2026-01-01'
     mr_conf.set_parser_settings(parser_settings)
     tasks_to_parse += mr_conf.generate_config_to_parse()
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         task.parse_processed_data()
 
-        task.parse_raw_data(max_threads=6,
+        task.parse_raw_data(max_threads=20,
                             page_load_timeout=8000,
                             show_browser=False
                             )
@@ -83,13 +83,13 @@ if __name__ == "__main__":
     )
 
     # Отправка по почте архивов (если у почты gmail нет 2-ух факторной аутентификации)
-    send_archives_via_gmail(
-        gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
-         gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
-        recipient_email=mr_conf.AUTHENTICATION['MAIL_SBER'],
-        directory_path=mr_conf.OUTPUT_DIR_POST_PROCESSING,
-        subject_prefix="Архив ",
-        body_text="Архив: ",
-        file_pattern="archive_*.zip",  # Только zip файлы
-        sort_files=True  # Сортировать по номеру
-    )
+    # send_archives_via_gmail(
+    #     gmail_email=mr_conf.AUTHENTICATION['GMAIL'],
+    #      gmail_app_password=mr_conf.AUTHENTICATION['PASS_GMAIL'],
+    #     recipient_email=mr_conf.AUTHENTICATION['MAIL_SBER'],
+    #     directory_path=mr_conf.OUTPUT_DIR_POST_PROCESSING,
+    #     subject_prefix="Архив ",
+    #     body_text="Архив: ",
+    #     file_pattern="archive_*.zip",  # Только zip файлы
+    #     sort_files=True  # Сортировать по номеру
+    # )

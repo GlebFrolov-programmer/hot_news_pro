@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta, date
 
@@ -130,6 +132,7 @@ class ParserSettings:
     SEARCH_LIMIT_TELEGRAM = 999_999
 
     DATE_FROM = str(date.today().replace(day=1))
+    DATE_TO = str(date.today().replace(day=1) + relativedelta(months=1, days=-1))
 
     TRUSTED_SOURCES_DOMAINS = ["ria.ru", "tass.ru", "rbc.ru", "vedomosti.ru", "kommersant.ru",
                     "rg.ru", 'realty.rbc.ru', 'gipernn.ru', 'pravda-nn.ru',
@@ -145,13 +148,17 @@ class ParserSettings:
                               "realty_rbc",
                               ]
 
-    AVAILABLE_SOURCES = ['Telegram', 'Google', 'Tavily']
+    AVAILABLE_SOURCES = ['Telegram', 'Google', 'Tavily', 'Yandex']
     AVAILABLE_CATEGORIES = [
         'Тренды на рынке недвижимости', 'Цены на недвижимость', 'Первичное жильё', 'Вторичное жильё', 'Доступность недвижимости',
         'Бизнес',
         'Фонд оплаты труда',
         'Сельское хозяйство',
-        'Туризм'
+        'Туризм',
+        'Потребительская активность',
+        'Валовая заработная плата',
+        'Инфляция с учетом сезонных колебаний',
+        'Доля безналичных платежей'
     ]
     AVAILABLE_REGIONS = list(RegionSettings.REGIONS_KEYWORDS.keys())
 
@@ -178,6 +185,7 @@ class StorageSettings:
     OUTPUT_DIR_PROCESSED = OUTPUT_DIR_PATH / "processed"
     OUTPUT_DIR_RAW = OUTPUT_DIR_PATH / "raw"
     OUTPUT_DIR_POST_PROCESSING = OUTPUT_DIR_PATH / "post_processing"
+    OUTPUT_DIR_EVENTS = OUTPUT_DIR_PATH / "events"
     # OUTPUT_DIR_TOPICS = OUTPUT_DIR_PATH / "topics"
     # OUTPUT_DIR_CLUSTERS = OUTPUT_DIR_PATH / "clusters"
 

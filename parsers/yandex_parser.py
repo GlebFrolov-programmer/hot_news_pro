@@ -306,9 +306,6 @@ class YandexParser(BaseParser, ABC):
                         print(f"      ⚠️ Больше нет результатов")
                         break
 
-                    # Пауза между страницами
-                    time.sleep(1)
-
                 # Создаем NewsItem для каждого результата
                 for j, result in enumerate(all_results, 1):
                     title = result.get('title', '')
@@ -331,10 +328,5 @@ class YandexParser(BaseParser, ABC):
             except Exception as e:
                 print(f"Error processing query '{query}': {e}")
                 raise e
-
-            # Пауза между запросами
-            if i < total_queries:
-                print(f"      ⏳ Пауза между запросами: 2 сек...")
-                time.sleep(2)
 
         return news_items

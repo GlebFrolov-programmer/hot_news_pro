@@ -1,6 +1,8 @@
 import string
 from datetime import datetime, timezone, timedelta, date
 
+from dateutil.relativedelta import relativedelta
+
 from config.settings import APISettings, ParserSettings, StorageSettings, RegionSettings
 from itertools import product
 
@@ -55,16 +57,20 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
     def DATE_FROM(self):
         return str(self.MONTH_BEGIN)
 
+    @property
+    def DATE_TO(self):
+        return str(self.MONTH_BEGIN + relativedelta(months=1, days=-1))
+
     CONFIG_NAME = 'MacroRegion'
 
-    TEMPLATES_FILENAME_BASE = '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}'
+    TEMPLATES_FILENAME_BASE = '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}_{DATE_TO}'
 
-    TEMPLATES_FILENAME = {'Google': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
-                          'Tavily': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
-                          'Yandex': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}',
-                          'Telegram': '{AVAILABLE_CATEGORIES}_BASE_{PERIOD}_{DATE_FROM}'}
+    TEMPLATES_FILENAME = {'Google': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}_{DATE_TO}',
+                          'Tavily': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}_{DATE_TO}',
+                          'Yandex': '{AVAILABLE_CATEGORIES}_{AVAILABLE_REGIONS}_{PERIOD}_{DATE_FROM}_{DATE_TO}',
+                          'Telegram': '{AVAILABLE_CATEGORIES}_BASE_{PERIOD}_{DATE_FROM}_{DATE_TO}'}
 
-    TEMPLATES_PARSE = {'Google': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD} after:{DATE_FROM}',
+    TEMPLATES_PARSE = {'Google': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD} after:{DATE_FROM} before:{DATE_TO}',
                        'Tavily': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD}',
                        'Yandex': '({SUBCATEGORIES}) {AVAILABLE_REGIONS} {PERIOD}',
                        'Telegram': 'https://t.me/s/{CHANNEL_NAME}'}
@@ -141,7 +147,41 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
             'Спрос на туристические услуги',
             'Тенденции туризма',
             'Господдержка туризма',
+        ],
+        # Для агента Совуша
+        'Потребительская активность': [
+            'Новости потребительской активности',
+            'Анализ потребительских расходов',
+            'Динамика розничных продаж',
+            'Индекс потребительского доверия',
+            'Факторы изменения потребительской активности',
+            'Потребительские настроения по отраслям'
+        ],
+        'Валовая заработная плата': [
+            'Новости валовой заработной платы',
+            'Динамика валовой зарплаты по отраслям',
+            'Анализ среднемесячной валовой зарплаты',
+            'Региональные различия валовой заработной платы',
+            'Факторы роста валовой зарплаты',
+            'Прогноз валовой заработной платы'
+        ],
+        'Инфляция с учетом сезонных колебаний': [
+            'Новости сезонной инфляции',
+            'Анализ инфляции с поправкой на сезонность',
+            'Динамика сезонно скорректированных цен',
+            'Факторы сезонных колебаний инфляции',
+            'Инфляционные ожидания с учётом сезона',
+            'Сравнение сезонной и базовой инфляции'
+        ],
+        'Доля безналичных платежей': [
+            'Новости безналичных расчётов',
+            'Динамика доли безналичных платежей',
+            'Анализ структуры платежей по каналам',
+            'Факторы роста безналичного оборота',
+            'Региональная статистика безналичных платежей',
+            'Тенденции внедрения безналичных технологий'
         ]
+
     #     'Авито': [
     #         "Что купил Авито в 2023-2025 годах?",
     #         "Кто владелец Авито",
@@ -197,7 +237,6 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
         # 'Авито': ['avito', 'hikollegi']
         # 'Бизнес': business_channels
     }
-    SCRAPE_DO_TOKEN = 'e86c0b0276aa47af804edf15fde84816e7c506c78b6'
 
     def generate_config_to_parse(self) -> list:
         def extract_keys_from_templates(templates_dict):
@@ -394,7 +433,6 @@ class MacroRegionConfig(APISettings, ParserSettings, StorageSettings, RegionSett
                                                'OUTPUT',
                                                'REGION_KEYS',
                                                'PROXY',
-                                               'SCRAPE_DO_TOKEN',
                                                'SCRAPERAPI_KEY',
                                                'SCRAPERAPI_COUNTRY']),
 

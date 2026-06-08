@@ -121,6 +121,8 @@ class TavilyParser(BaseParser):
                     search_depth="advanced",
                     include_answer=True,
                     max_results=search_limit,
+                    start_date=self.metadata.get('DATE_FROM', ''),
+                    end_date=self.metadata.get('DATE_TO', ''),
                     )
             except requests.exceptions.ConnectionError:
                 print("Connection failed, retrying...")
