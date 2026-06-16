@@ -115,7 +115,8 @@ class ContainerNewsItem:
     ) -> List[Dict[str, Any]]:
         seen = {}
         distinct_data = []
-
+        # В первую очередь берем те ссылки, у которых есть данные
+        data = sorted(data, key=lambda item: item.get('raw_data'), reverse=True)
         for item in data:
             try:
                 key = tuple(item[field] for field in unique_fields)
