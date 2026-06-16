@@ -14,6 +14,28 @@ from news.news_item import NewsItem
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
 
 
+def convert_date(date_str: str):
+    """Преобразует строку даты в объект datetime"""
+    if not date_str:
+        return None
+
+    # Попробуйте самые частые форматы
+    formats = [
+        '%Y-%m-%d',  # 2024-12-25
+        '%Y-%m-%dT%H:%M:%S',  # 2024-12-25T14:30:00
+        '%d.%m.%Y',  # 25.12.2024
+        '%d.%m.%Y %H:%M:%S',  # 25.12.2024 14:30:00
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+
+    return None
+
+
 class YandexParser(BaseParser, ABC):
     def __init__(self, requests_to_parse: list[str], parameters: dict, metadata: dict, save_to: dict):
         super().__init__()
@@ -125,7 +147,13 @@ class YandexParser(BaseParser, ABC):
             format = self.parameters.get('RESULT_FORMAT', 'xml')
 
             # Выполняем асинхронный запрос через API
-            operation = self.search_api.run_deferred(query, format=format, page=page)
+            configured_search = self.search_api.configure(
+                groups_on_page=100,  # API ограничивает 100 результатами
+                docs_in_group=1,
+                max_passages=5  # Количество пассажей на документ
+            )
+
+            operation = configured_search.run_deferred(query, format=format, page=page)
 
             # Ждем завершения операции
             print("⏳ Ожидание ответа от API...")
@@ -166,12 +194,33 @@ class YandexParser(BaseParser, ABC):
                     result['url'] = url_elem.text.strip()
 
                 # Извлекаем дату, если есть
-                date_elem = doc.find('date')
-                if date_elem is not None and date_elem.text:
-                    result['date'] = date_elem.text.strip()
+                date_elem = doc.findtext('modtime', '')
+                if date_elem:
+                    # Пробуем распарсить дату
+                    try:
+                        from datetime import datetime
+                        if len(date_elem) >= 15 and date_elem[8] == 'T':
+                            date_str = date_elem[:8] + date_elem[9:15]
+                            parsed_date = datetime.strptime(date_str, "%Y%m%d%H%M%S")
+                            result['date'] = parsed_date.isoformat()
+                    except:
+                        result['date'] = date_elem
+
+                # Пассажи (фрагменты с ключевыми словами)
+                passages = doc.findall('.//passage')
+                passage_items = []
+                if passages:
+                    for passage in passages:
+                        passage_text = ''.join(passage.itertext()).strip()
+                        if passage_text:
+                            passage_items.append(' '.join(passage_text.split()))
+                if passage_items:
+                    result['raw_data'] = ' '.join(passage_items)
+                else:
+                    result['raw_data'] = None
 
                 # Добавляем результат только если есть заголовок и URL
-                if result.get('title') and result.get('url'):
+                if result.get('title') and result.get('url') and result.get('date'):
                     results.append(result)
 
         except Exception as e:
@@ -280,13 +329,18 @@ class YandexParser(BaseParser, ABC):
                     # Парсим ответ
                     page_results = self.parse_api_response(api_response)
 
-                    # Фильтруем дубликаты по URL
+                    # Фильтруем дубликаты по URL и дату публикации/обновления
                     unique_urls = set()
                     filtered_results = []
 
                     for result in page_results:
                         url = result.get('url', '')
-                        if url and url not in unique_urls:
+                        date_ = result.get('date', '')
+                        raw_data = result.get('raw_data', '')
+                        parsed_date = convert_date(date_)
+                        date_from = convert_date(self.metadata.get('DATE_FROM', ''))
+                        date_to = convert_date(self.metadata.get('DATE_TO', ''))
+                        if url and url not in unique_urls and date_from <= parsed_date <= date_to and len(raw_data.split(' ')) >= 20:
                             unique_urls.add(url)
                             filtered_results.append(result)
 
@@ -310,6 +364,7 @@ class YandexParser(BaseParser, ABC):
                 for j, result in enumerate(all_results, 1):
                     title = result.get('title', '')
                     url = result.get('url', '')
+                    raw_data = result.get('raw_data', '')
 
                     if title and url:
                         news_items.append(
@@ -318,6 +373,7 @@ class YandexParser(BaseParser, ABC):
                                 metadata=self.metadata,
                                 url=url,
                                 title=title,
+                                raw_data=raw_data,
                                 approved=self.check_approved_source(url)
                             )
                         )
@@ -330,3 +386,4 @@ class YandexParser(BaseParser, ABC):
                 raise e
 
         return news_items
+
