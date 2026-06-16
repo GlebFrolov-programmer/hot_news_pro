@@ -204,10 +204,10 @@ class WebsiteParser:
                     cleaned_lines.append(cleaned_line)
 
             clean_text = self._remove_sensitive_and_urls('\n'.join(cleaned_lines))
-            return clean_text[:20000]
+            return clean_text[:10000]
 
         except Exception:
             try:
-                return html[:20000]
+                return html[:10000]
             except:
                 return ""
