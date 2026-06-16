@@ -8,11 +8,9 @@ import glob
 from typing import List, Dict, Any
 from tqdm.asyncio import tqdm_asyncio
 
-# from parsers.google_parser import GoogleParser
-from parsers.google_parser_new import GoogleParser
+from parsers.google_parser import GoogleParser
 from parsers.tavily_parser import TavilyParser
 from parsers.telegram_parser import TelegramParser
-# from parsers.website_parser import fill_raw_data_by_parse_websites_async
 from parsers.website_parser import WebsiteParser
 from parsers.yandex_parser import YandexParser
 
@@ -285,7 +283,7 @@ class ContainerNewsItem:
                         print(f"Ошибка при чтении файла {filepath}: {e}")
 
         # Удаление дубликатов
-        full_data = self.get_distinct_data(full_data, ['url', 'raw_data'])
+        full_data = self.get_distinct_data(full_data, ['url'])
         
         # Исправление метаданных после сборки (например тг собирается только один раз, поэтому надо исправить регион)
         full_data = self.fix_metadata(full_data)
