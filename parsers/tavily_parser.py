@@ -138,10 +138,9 @@ class TavilyParser(BaseParser):
                         metadata=self.metadata,
                         url=result.get('url', ''),
                         title=result.get('title', ''),
+                        raw_data=result.get('content', ''),
                         approved=self.check_approved_source(result.get('url', '')),
                     )
                 )
-
-            # time.sleep(random.uniform(1, 3))  # задержка между запросами
 
         return news_items

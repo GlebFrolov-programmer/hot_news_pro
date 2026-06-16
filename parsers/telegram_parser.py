@@ -85,12 +85,12 @@ class TelegramParser(BaseParser):
 
         return search_limit
 
-    def get_date_from(self) -> datetime.date:
-        date_from = self.metadata.get('DATE_FROM', datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0,
+    def get_date_from_metadata(self, key_metadata: str) -> datetime.date:
+        date_ = self.metadata.get(key_metadata, datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0,
                                                                                       microsecond=0))
-        if isinstance(date_from, str):
+        if isinstance(date_, str):
             try:
-                date_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc,
+                date_ = datetime.strptime(date_, "%Y-%m-%d").replace(tzinfo=timezone.utc,
                                                                              hour=0,
                                                                              minute=0,
                                                                              second=0,
@@ -99,7 +99,7 @@ class TelegramParser(BaseParser):
                 print("Ошибка: неверный формат даты, должна быть строка в формате 'YYYY-MM-DD'")
                 raise
 
-        return date_from
+        return date_
 
     @staticmethod
     def get_title_from_post(text):
@@ -121,7 +121,7 @@ class TelegramParser(BaseParser):
         wait=wait_exponential(multiplier=1, min=5, max=10),
         retry=retry_if_exception_type((requests.RequestException,))
     )
-    async def _get_channel_messages(self, channel_name, search_limit, date_from):
+    async def _get_channel_messages(self, channel_name, search_limit, date_from, date_to):
         load_dotenv()
 
         # Настройки клиента
@@ -137,8 +137,8 @@ class TelegramParser(BaseParser):
                 channel = await client.get_entity(channel_name)
                 # search_limit = self.get_limit_search()
                 messages = []
-                async for message in client.iter_messages(channel):
-                    if message.date > date_from and search_limit > len(messages):
+                async for message in client.iter_messages(channel, offset_date=date_to):
+                    if date_from <= message.date <= date_to and search_limit > len(messages):
                         if message.text:
                             messages.append(
                                 NewsItem(
@@ -167,7 +167,8 @@ class TelegramParser(BaseParser):
     async def _process_channels(self, channel_list):
         all_messages = []
 
-        date_from = self.get_date_from()
+        date_from = self.get_date_from_metadata('DATE_FROM')
+        date_to = self.get_date_from_metadata('DATE_TO')
 
         for request in channel_list:
 
@@ -178,7 +179,7 @@ class TelegramParser(BaseParser):
             except Exception as e:
                 search_limit = self.get_limit_search()
 
-            messages = await self._get_channel_messages(channel, search_limit, date_from)
+            messages = await self._get_channel_messages(channel, search_limit, date_from, date_to)
 
             if messages:
                 all_messages.extend(messages)
