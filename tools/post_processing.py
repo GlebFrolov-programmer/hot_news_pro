@@ -1,5 +1,29 @@
 import re
 from urllib.parse import urlparse, parse_qs, urlencode
+import idna
+
+
+def decode_punycode(word):
+    """
+    Принимает строку с Punycode и возвращает декодированную строку с кириллицей
+
+    Args:
+        word: строка (например, "xn--d1aqf" или "xn--p1ai")
+
+    Returns:
+        декодированная строка (например, "сайт" или "рф")
+    """
+    if word is None:
+        return ''
+
+    if not isinstance(word, str):
+        word = str(word)
+
+    try:
+        return idna.decode(word)
+    except (idna.IDNAError, UnicodeError, ValueError):
+        # Если не Punycode или ошибка, возвращаем как есть
+        return word
 
 
 def modify_urls(data: list[dict], **kwargs) -> list[dict]:
@@ -90,9 +114,9 @@ def parse_urls_to_dict(data: list[dict], **kwargs) -> list[dict]:
             # Создаем словарь с компонентами URL
             url_parts = {
                 'protocol': parsed.scheme or None,
-                'subdomain': subdomain,
-                'domain_name': domain_name,
-                'domain_zone': domain_zone,
+                'subdomain': decode_punycode(subdomain),
+                'domain_name': decode_punycode(domain_name),
+                'domain_zone': decode_punycode(domain_zone),
                 'path': parsed.path or None,
                 'query_params': query_params,
                 'fragment': parsed.fragment or None
